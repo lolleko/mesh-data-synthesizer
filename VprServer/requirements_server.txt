@@ -1,0 +1,5 @@
+redis
+fastapi
+uvicorn
+tqdm
+ml_dtypes

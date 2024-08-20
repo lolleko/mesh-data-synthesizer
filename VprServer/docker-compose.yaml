@@ -1,0 +1,46 @@
+version: '3'
+
+services:
+  python:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_HOST=74.82.30.226
+    command: uvicorn --app-dir ./app app:app --host 0.0.0.0 --port 80
+    # hack to avoid docker compose volume perrmission issues
+    user: root
+    volumes:
+      -  torch_cache:/root/.cache/torch
+    ports:
+      - 80:80
+    depends_on:
+      geolocator-redis-stack:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  geolocator-redis-stack:
+    image: redis/redis-stack:7.4.0-v0
+    environment:
+      - REDIS_ARGS=--requirepass meshvpr,eccv,2024
+      - REDISCLI_AUTH=meshvpr,eccv,2024
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 2s
+      timeout: 4s
+      retries: 300
+    volumes:
+      - redis_data:/data
+    ports:
+      - 6379:6379
+      - 8001:8001
+
+volumes:
+  torch_cache:
+  redis_data:

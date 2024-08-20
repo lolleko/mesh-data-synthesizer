@@ -1,0 +1,6 @@
+.DS_Store
+.vs
+*.pyc
+MeshSynth/.vsconfig
+MeshSynth/.editorconfig
+MeshSynth/Content/CesiumSettings/CesiumIonSaaS.uasset
