@@ -5,7 +5,7 @@
 Currently, it focuses on the data generation features of the tool. The code for the live inference and search features are already available, but they are not yet documented.
 
 <p float="left">
-  <img src="https://github.com/lolleko/unreal-cesium-geolocator/blob/v1/Docs/Assets/mesh_synth.gif?raw=true" width="81%" />
+  <img src="https://github.com/lolleko/mesh-data-synthesizer/blob/main/Docs/Assets/mesh_synth.gif?raw=true" width="81%" />
   <img src="https://github.com/gmberton/gmberton.github.io/raw/96db6aa36b20d3a07f03e889ef82ec74370991cf/assets/MeshVPR/berlin_short_03.gif" width="40%" />
   <img src="https://github.com/gmberton/gmberton.github.io/blob/96db6aa36b20d3a07f03e889ef82ec74370991cf/assets/MeshVPR/sf_short_02.gif" width="40%" />
 </p>
