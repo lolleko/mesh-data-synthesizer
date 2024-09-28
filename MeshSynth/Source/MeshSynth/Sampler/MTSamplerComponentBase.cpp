@@ -50,11 +50,32 @@ void UMTSamplerComponentBase::BeginPlay()
     Capture2D->GetCaptureComponent2D()->TextureTarget->AddressX = TextureAddress::TA_Clamp;
     Capture2D->GetCaptureComponent2D()->TextureTarget->AddressY = TextureAddress::TA_Clamp;
     Capture2D->GetCaptureComponent2D()->TextureTarget->RenderTargetFormat = RTF_RGBA8;
-    Capture2D->GetCaptureComponent2D()->TextureTarget->TargetGamma = 0.F;
+    Capture2D->GetCaptureComponent2D()->TextureTarget->TargetGamma = 2.2F;
     Capture2D->GetCaptureComponent2D()->TextureTarget->bGPUSharedFlag = true;
     Capture2D->GetCaptureComponent2D()->ShowFlags.SetToneCurve(ShouldUseToneCurve());
-    Capture2D->GetCaptureComponent2D()->TextureTarget->InitCustomFormat(
-        512, 512, EPixelFormat::PF_B8G8R8A8, false);
+
+    DepthPerspectivePostProcessMaterial = LoadObject<UMaterial>(
+    nullptr,
+    TEXT("/Game/Geolocator/Materials/PP_DepthPerspective.PP_DepthPerspective"),
+    nullptr,
+    LOAD_None,
+    nullptr);
+
+    Capture2DDepth = GetWorld()->SpawnActor<AMTSceneCapture>();
+    Capture2DDepth->GetCaptureComponent2D()->bAlwaysPersistRenderingState = true;
+    Capture2DDepth->GetCaptureComponent2D()->TextureTarget = NewObject<UTextureRenderTarget2D>(this);
+    Capture2DDepth->GetCaptureComponent2D()->TextureTarget->bAutoGenerateMips = false;
+    Capture2DDepth->GetCaptureComponent2D()->TextureTarget->CompressionSettings =
+        TextureCompressionSettings::TC_Default;
+    Capture2DDepth->GetCaptureComponent2D()->TextureTarget->AddressX = TextureAddress::TA_Clamp;
+    Capture2DDepth->GetCaptureComponent2D()->TextureTarget->AddressY = TextureAddress::TA_Clamp;
+    Capture2DDepth->GetCaptureComponent2D()->TextureTarget->RenderTargetFormat = RTF_RGBA8;
+    Capture2DDepth->GetCaptureComponent2D()->TextureTarget->TargetGamma = 2.2F;
+    Capture2DDepth->GetCaptureComponent2D()->TextureTarget->bGPUSharedFlag = false;
+    Capture2DDepth->GetCaptureComponent2D()->ShowFlags.SetToneCurve(false);
+    Capture2DDepth->GetCaptureComponent2D()->ShowFlags.SetAntiAliasing(false);
+    
+    ChangeCapture2DResolution({512, 512}, 65.);
 }
 
 void UMTSamplerComponentBase::BeginSampling()
@@ -63,6 +84,16 @@ void UMTSamplerComponentBase::BeginSampling()
     {
         return;
     }
+    
+    DepthPerspectivePostProcessMaterialInstance = UMaterialInstanceDynamic::Create(
+        DepthPerspectivePostProcessMaterial,
+        this);
+
+    DepthPerspectivePostProcessMaterialInstance->SetScalarParameterValue(
+        FName(TEXT("MaxZ")), MaxDepth);
+
+    Capture2DDepth->GetCaptureComponent2D()->AddOrUpdateBlendable(
+        DepthPerspectivePostProcessMaterial, 1);
 
     bIsSampling = true;
     CurrentSampleCount = 0;
@@ -220,6 +251,7 @@ void UMTSamplerComponentBase::PreCapture()
     PanoramaCapture->SetActorTransform(UpdatedTransform);
     PanoramaCapture->AddActorWorldRotation(FRotator(0., 90., 0.));
     Capture2D->SetActorTransform(UpdatedTransform);
+    Capture2DDepth->SetActorTransform(UpdatedTransform);
 
     UpdateCesiumCameras();
 
@@ -258,6 +290,12 @@ void UMTSamplerComponentBase::CaptureSample()
     else
     {
         EnqueueCapture({Capture2D, AbsoluteImageFilePath});
+
+        if (bCaptureDepth)
+        {
+            // replace extension with _depth.png
+            EnqueueCapture({Capture2DDepth, FPaths::ChangeExtension(AbsoluteImageFilePath, TEXT("depth")) + TEXT(".png")});
+        }
     }
 
     if (!CaptureQueue.IsEmpty())
@@ -306,16 +344,17 @@ void UMTSamplerComponentBase::CaptureSample()
                     }
                     else if (CaptureData.Capture->IsA<AMTSceneCapture>())
                     {
-                        auto* Capture2D = CastChecked<AMTSceneCapture>(CaptureData.Capture);
+                        auto* CurrentCapture2D = CastChecked<AMTSceneCapture>(CaptureData.Capture);
 
-                        const auto* Resource = Capture2D->GetCaptureComponent2D()
+                        const auto* Resource = CurrentCapture2D->GetCaptureComponent2D()
                                                    ->TextureTarget->GetRenderTargetResource();
-                        Capture2D->GetMutableImageSize() = {(int32)Resource->GetSizeX(), (int32)Resource->GetSizeY()};
+                        CurrentCapture2D->GetMutableImageSize() = {(int32)Resource->GetSizeX(), (int32)Resource->GetSizeY()};
+                        FReadSurfaceDataFlags SurfaceFlags(RCM_UNorm, CubeFace_MAX);
                         RHICmdList.ReadSurfaceData(
                             Resource->GetRenderTargetTexture(),
                             FIntRect(0, 0, Resource->GetSizeX(), Resource->GetSizeY()),
-                            Capture2D->GetMutableImageDataRef(),
-                            FReadSurfaceDataFlags(RCM_UNorm, CubeFace_MAX));
+                            CurrentCapture2D->GetMutableImageDataRef(),
+                            SurfaceFlags);
                     }
                 }
             });
@@ -442,7 +481,7 @@ void UMTSamplerComponentBase::WaitForRenderThreadReadSurfaceAndWriteImages()
                 auto ImageWriteFuture = UMTSamplingFunctionLibrary::WritePixelBufferToFile(
                     CaptureData.AbsoluteImagePath,
                     Capture->GetMutableImageDataRef(),
-                    Capture2D->GetMutableImageSize());
+                    Capture->GetMutableImageSize());
                 ImageWriteTaskFutures.Emplace(MoveTemp(ImageWriteFuture));
             }
         }
@@ -458,6 +497,7 @@ void UMTSamplerComponentBase::EndSampling()
 
     PanoramaCapture->Destroy();
     Capture2D->Destroy();
+    Capture2DDepth->Destroy();
 
     // TODO refactor into GetPriamryPlayerPawn
     // const auto PlayerPawn = CastChecked<AMTPlayerPawn>(

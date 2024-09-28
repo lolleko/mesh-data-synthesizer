@@ -107,12 +107,36 @@ UMTSamplingFunctionLibrary::WritePixelBufferToFile(
                 FModuleManager::GetModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));
 
             TArray64<uint8> ImgData;
-            ImageWrapperModule.CompressImage(
-                ImgData,
-                EImageFormat::JPEG,
-                FImageView(
-                    (uint8*)(PixelBufferCopy.GetData()), Size.X, Size.Y, ERawImageFormat::BGRA8),
-                85);
+            if (FilePath.Contains(".bmp"))
+            {
+                ImageWrapperModule.CompressImage(
+                    ImgData,
+                    EImageFormat::BMP,
+                    FImageView(
+                        (uint8*)(PixelBufferCopy.GetData()), Size.X, Size.Y, ERawImageFormat::BGRA8),
+                    100);
+            } else if (FilePath.Contains(".jpg") || FilePath.Contains(".jpeg"))
+            {
+                ImageWrapperModule.CompressImage(
+                    ImgData,
+                    EImageFormat::JPEG,
+                    FImageView(
+                        (uint8*)(PixelBufferCopy.GetData()), Size.X, Size.Y, ERawImageFormat::BGRA8),
+                    85);
+            } else if (FilePath.Contains(".png"))
+            {
+                ImageWrapperModule.CompressImage(
+                    ImgData,
+                    EImageFormat::PNG,
+                    FImageView(
+                        (uint8*)(PixelBufferCopy.GetData()), Size.X, Size.Y, ERawImageFormat::BGRA8),
+                    100);
+            } else
+            {
+                check(false);
+                return FImageWriteResult{FilePath, {}};
+            }
+            
             FFileHelper::SaveArrayToFile(ImgData, *FilePath);
 
             return FImageWriteResult{FilePath, ImgData};

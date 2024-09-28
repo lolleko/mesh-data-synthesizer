@@ -86,6 +86,8 @@ void UMTReSamplerComponent::BeginPlay()
                 break;
         }
 
+        ToggleDepthCapture(bShouldCaptureDepth);
+
         InitialLocationCount = Locations.Num();
 
         BeginSampling();

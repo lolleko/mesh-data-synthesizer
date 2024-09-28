@@ -15,7 +15,7 @@ enum class EMTDatasetType
 {
     SFXL_CSV,
     PITTS_TXT,
-    TOKYO_TXT,
+    TOKYO_TXT
 };
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -41,6 +41,9 @@ private:
 
     UPROPERTY(EditAnywhere)
     EMTDatasetType DatasetType;
+
+    UPROPERTY(EditAnywhere)
+    bool bShouldCaptureDepth = false;
 
     TArray<UMTSamplingFunctionLibrary::FLocationPathPair> Locations;
 

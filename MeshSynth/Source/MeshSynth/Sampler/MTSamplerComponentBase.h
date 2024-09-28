@@ -102,6 +102,12 @@ protected:
         bCapturePanorama = bEnable;
     }
 
+    void ToggleDepthCapture(const bool bEnable, float NewMaxDepth = 100000.F)
+    {
+        bCaptureDepth = bEnable;
+        MaxDepth = NewMaxDepth;
+    }
+
     virtual void TickComponent(
         float DeltaTime,
         ELevelTick TickType,
@@ -109,8 +115,6 @@ protected:
 
     void ChangeCapture2DResolution(const FIntVector2& Resolution, const double FOVAngle = 65., bool bResizeTo512 = false)
     {
-        Capture2D->GetCaptureComponent2D()->FOVAngle = 68;
-
         // mimics torch.resize(512)
         FIntVector2 ResizedResolution = Resolution;
 
@@ -128,8 +132,12 @@ protected:
         }
 
         Capture2D->GetCaptureComponent2D()->FOVAngle = FOVAngle;
+        Capture2DDepth->GetCaptureComponent2D()->FOVAngle = FOVAngle;
+
         Capture2D->GetCaptureComponent2D()->TextureTarget->InitCustomFormat(
-            ResizedResolution.X, ResizedResolution.Y, EPixelFormat::PF_B8G8R8A8, false);
+            ResizedResolution.X, ResizedResolution.Y, EPixelFormat::PF_B8G8R8A8, true);
+        Capture2DDepth->GetCaptureComponent2D()->TextureTarget->InitCustomFormat(
+            ResizedResolution.X, ResizedResolution.Y, EPixelFormat::PF_B8G8R8A8, true);
     }
 
     FString CreateImagePathForSample(const FMTSample& Sample);
@@ -140,6 +148,15 @@ private:
 
     UPROPERTY()
     TObjectPtr<AMTSceneCapture> Capture2D;
+
+    UPROPERTY()
+    TObjectPtr<AMTSceneCapture> Capture2DDepth;
+    
+    UPROPERTY()
+    TObjectPtr<UMaterial> DepthPerspectivePostProcessMaterial;
+
+    UPROPERTY()
+    TObjectPtr<UMaterialInstanceDynamic> DepthPerspectivePostProcessMaterialInstance;
 
     UPROPERTY(EditAnywhere)
     bool bShouldSampleOnBeginPlay = false;
@@ -157,6 +174,12 @@ private:
     bool bIsSampling = false;
 
     bool bCapturePanorama = true;
+
+    bool bCaptureDepth = false;
+
+    // The maximum depth value to capture in the depth buffer (cm)
+    // Default 1km
+    float MaxDepth = 100000.;
 
     int32 CesiumGroundLoaderCameraID;
 
