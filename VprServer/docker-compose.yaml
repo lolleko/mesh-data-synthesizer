@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      - REDIS_HOST=74.82.30.226
+      - REDIS_HOST=127.0.0.1
     command: uvicorn --app-dir ./app app:app --host 0.0.0.0 --port 80
     # hack to avoid docker compose volume perrmission issues
     user: root
@@ -27,9 +27,6 @@ services:
 
   geolocator-redis-stack:
     image: redis/redis-stack:7.4.0-v0
-    environment:
-      - REDIS_ARGS=--requirepass meshvpr,eccv,2024
-      - REDISCLI_AUTH=meshvpr,eccv,2024
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
       interval: 2s
